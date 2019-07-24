@@ -6,15 +6,21 @@ Tested with python3.
 
 Serializer can be utilized either as instantiated or non-instantiated.
 
+## Install
 
-## Instantiated example
+`pip3 install git+https://github.com/anttin/anserializer#egg=anserializer`
+
+
+## Examples
+
+### Instantiated example
 ```
 s = serializer.Serializer([ serializer.DatetimeSerializer(), serializer.ObjectSerializer(object), serializer.MySerializer(MyClass) ])
 x = ser.get_serialized(o)
 _x = ser.get_deserialized(x)
 ```
 
-## Non-instantiated example
+### Non-instantiated example
 ```
 serializers = [ serializer.DatetimeSerializer(), serializer.ObjectSerializer(object), serializer.MySerializer(MyClass) ]
 x = serializer.Serializer.serialize(o, serializers)
