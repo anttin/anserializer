@@ -45,7 +45,7 @@ class ObjectSerializer(object):
     except:
       return obj
     
-    r = re.match(ID_REGEX, k)
+    r = re.match(self.id_regex, k)
 
     if not r:
       return obj

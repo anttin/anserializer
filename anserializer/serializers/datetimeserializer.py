@@ -26,7 +26,6 @@ class DatetimeSerializer(ObjectSerializer):
       return obj
 
     if 'value' not in v or 'utcoffset' not in v or 'tzname' not in v:
-      print('ffff')
       return obj
 
     tz = datetime.timezone(offset=datetime.timedelta(seconds=int(v['utcoffset'])), name=v['tzname'])
