@@ -1,9 +1,8 @@
+import copy
 import json
 import re
-#from serializers.datetimeserializer import DatetimeSerializer
 from anserializer.serializers.datetimeserializer import DatetimeSerializer
 from anserializer.serializers.objectserializer import ObjectSerializer
-#from serializersobjectserializer import ObjectSerializer
 
 
 class Serializer(object):
@@ -108,28 +107,104 @@ class Serializer(object):
 
 
   @classmethod
-  def _finalize_deserialization(cls, obj, deserializers={}, regex_list=[]):
-    if isinstance(obj, list):
-      a = []
-      for item in obj:
-        a.append(cls._finalize_deserialization(item, deserializers, regex_list))
-      return a
-        
-    elif isinstance(obj, dict):
-      o = {}
-      for k, v in obj.items():
-        if isinstance(k, str) and len(obj.keys()) == 1:
-          for r in regex_list:
-            if r.search(k):
-              return deserializers[r.pattern].deserialize(obj)
-        o[k] = cls._finalize_deserialization(v, deserializers, regex_list)
-        
-      return o      
-
+  def _get_paths(cls, tree, cur=()):
+    if not tree:
+      yield cur
     else:
-      return obj
-     
-    
+      if isinstance(tree, (list, tuple, set)):
+        for n in range(len(tree)):
+          for path in cls._get_paths(tree[n], cur+(n,)):
+            yield path            
+      elif isinstance(tree, dict):
+        for n, s in tree.items():
+          for path in cls._get_paths(s, cur+(n,)):
+            yield path
+      else:
+        yield cur
+
+
+  @staticmethod
+  def _get_path(tree, *keys_or_indexes):
+    value = tree
+    for key_or_index in keys_or_indexes:
+        value = value[key_or_index]
+    return value
+
+
+  @staticmethod
+  def _sort_paths_by_length(paths):
+    _paths = sorted(paths, key=lambda x: len(x), reverse=True)
+    return _paths
+
+
+  @classmethod
+  def _get_longest_paths(cls, paths):
+    if paths is None or len(paths) < 1:
+      return []
+
+    _paths  = cls._sort_paths_by_length(paths)
+    _maxlen = len(_paths[0])
+
+    a = [] 
+    for x in _paths:
+      if len(x) == _maxlen:
+        a.append(x)
+      else:
+        break
+    return a
+
+
+  @staticmethod
+  def _path_get(d, keys):
+    for key in keys:
+        d = d[key]
+    return d
+
+
+  @classmethod
+  def _path_set(cls, d, keys, value):
+    d = cls._path_get(d, keys[:-1])
+    d[keys[-1]] = value
+
+
+  @classmethod
+  def _finalize_deserialization(cls, obj, deserializers={}, regex_list=[]):
+    def check_deserializers(value, regex_list):
+      if isinstance(value, dict):
+        for k, v in value.items():
+          if isinstance(k, str) and len(value.keys()) == 1:
+            for r in regex_list:
+              if r.search(k):
+                return r.pattern
+      return None
+
+
+    paths = [list(x) for x in list(cls._get_paths(obj))]
+
+    _paths = copy.deepcopy(paths)
+
+    processed_paths = set()
+    while len(_paths) > 0:
+      _longest = cls._get_longest_paths(_paths)
+
+      for path in _longest:
+        if not tuple(path) in processed_paths:
+          value = cls._path_get(obj, path)
+          re_pattern = check_deserializers(value, regex_list)
+          if re_pattern is not None:
+            cls._path_set(obj, path, deserializers[re_pattern].deserialize(value))
+          processed_paths.add(tuple(path))
+        path.pop()
+        if len(path) == 0:
+          _paths.remove(path)
+
+    re_pattern = check_deserializers(obj, regex_list)
+    if re_pattern is not None:
+      obj = deserializers[re_pattern].deserialize(obj)
+
+    return obj 
+        
+
   @classmethod
   def deserialize(cls, obj_json, serializers):
     deserializers = cls._get_deserializer_dict(serializers)
