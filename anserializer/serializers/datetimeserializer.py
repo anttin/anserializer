@@ -1,5 +1,5 @@
 import datetime
-from objectserializer import ObjectSerializer
+from anserializer.serializers.objectserializer import ObjectSerializer
 
 
 class DatetimeSerializer(ObjectSerializer):
