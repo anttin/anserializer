@@ -4,29 +4,6 @@ from datetimeserializer import DatetimeSerializer
 from objectserializer import ObjectSerializer
 
 
-"""
-
-Serializer can be utilized either as instantiated or non-instantiated.
-
-
-Instantiated example:
-------------------------
-
-s = serializer.Serializer([ serializer.DatetimeSerializer(), serializer.ObjectSerializer(object), serializer.MySerializer(MyClass) ])
-x = ser.get_serialized(o)
-_x = ser.get_deserialized(x)
-
-
-Non-instantiated example:
--------------------------
-
-serializers = [ serializer.DatetimeSerializer(), serializer.ObjectSerializer(object), serializer.MySerializer(MyClass) ]
-x = serializer.Serializer.serialize(o, serializers)
-_x = serializer.Serializer.deserialize(x, serializers)
-
-
-"""
-
 class Serializer(object):
   def __init__(self, serializers=[]):
     if len(serializers) == 0:
@@ -38,8 +15,8 @@ class Serializer(object):
       self.serializers = serializers
 
 
-  def get_serialized(self, o):
-    return self.serialize(o, self.serializers)
+  def get_serialized(self, obj, **json_dumps_params):
+    return self.serialize(obj, self.serializers, **json_dumps_params)
 
 
   def get_deserialized(self, j):
@@ -89,10 +66,19 @@ class Serializer(object):
 
 
   @classmethod
-  def serialize(cls, obj, serializers=[]):
+  def serialize(cls, obj, serializers, **json_dumps_params):
     _serializers = cls._get_serializer_dict(serializers)
     _obj = cls._prepare_obj_for_serialization(obj, _serializers)
-    return json.dumps(_obj, indent=4, sort_keys=True, separators=(',', ': '))
+
+    default_json_dumps_params = { 
+      'indent':     2,
+      'sort_keys':  True,
+      'separators': (',', ': ') 
+    }
+
+    _json_dumps_params = { **default_json_dumps_params, **json_dumps_params }
+
+    return json.dumps(_obj, **_json_dumps_params)
 
 
   @staticmethod
@@ -143,7 +129,7 @@ class Serializer(object):
      
     
   @classmethod
-  def deserialize(cls, obj_json, serializers=[]):
+  def deserialize(cls, obj_json, serializers):
     deserializers = cls._get_deserializer_dict(serializers)
     _o = json.loads(obj_json)
 
