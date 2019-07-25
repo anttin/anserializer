@@ -8,7 +8,7 @@ Serializer can be utilized either as instantiated or non-instantiated.
 
 ## Install
 
-`pip3 install git+https://github.com/anttin/anserializer#egg=anserializer`
+`pip3 install anserializer --extra-index-url https://py.anttin.fi/`
 
 
 ## Examples
