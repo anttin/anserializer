@@ -179,7 +179,7 @@ class Serializer(object):
       return None
 
 
-    paths = [list(x) for x in list(cls._get_paths(obj))]
+    paths = [list(x) for x in list(cls._get_paths(obj)) if len(x) > 0]
 
     _paths = copy.deepcopy(paths)
 
