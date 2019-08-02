@@ -8,13 +8,11 @@ class DatetimeSerializer(ObjectSerializer):
     super().__init__([datetime.datetime], '^!Datetime\(\)$')
 
   def serialize(self, obj):
-    tz = obj.astimezone()
-
     return { 
       '!Datetime()': {
          'value':     obj.strftime('%Y-%m-%dT%H:%M:%S.%f'),
-         'utcoffset': tz.utcoffset().seconds,
-         'tzname':    tz.tzname()
+         'utcoffset': obj.tzinfo.utcoffset(None).seconds if obj.tzinfo is not None else None,
+         'tzname':    obj.tzinfo.tzname(None) if obj.tzinfo is not None else None
        }
     }
      
@@ -28,7 +26,10 @@ class DatetimeSerializer(ObjectSerializer):
     if 'value' not in v or 'utcoffset' not in v or 'tzname' not in v:
       return obj
 
-    tz = datetime.timezone(offset=datetime.timedelta(seconds=int(v['utcoffset'])), name=v['tzname'])
-
-    return datetime.datetime.strptime(v['value'], '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=tz)
+    dt = datetime.datetime.strptime(v['value'], '%Y-%m-%dT%H:%M:%S.%f')
+    if v['utcoffset'] is not None and v['tzname'] is not None:
+      tz = datetime.timezone(offset=datetime.timedelta(seconds=int(v['utcoffset'])), name=v['tzname'])
+      return dt.replace(tzinfo=tz)
+    else:
+      return dt 
     
