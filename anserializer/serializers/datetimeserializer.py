@@ -1,11 +1,12 @@
 import datetime
-from anserializer.serializers.objectserializer import ObjectSerializer
+from .baseserializer import BaseSerializer
 
 
-class DatetimeSerializer(ObjectSerializer):
+class DatetimeSerializer(BaseSerializer):
 
   def __init__(self):
     super().__init__([datetime.datetime], '^!Datetime\(\)$')
+
 
   def serialize(self, obj):
     return { 
@@ -17,14 +18,14 @@ class DatetimeSerializer(ObjectSerializer):
     }
      
  
-  def deserialize(self, obj):
+  def deserialize(self, serialized_obj):
     try:
-      k, v = list(obj.items())[0]
+      k, v = list(serialized_obj.items())[0]
     except:
-      return obj
+      return serialized_obj
 
     if 'value' not in v or 'utcoffset' not in v or 'tzname' not in v:
-      return obj
+      return serialized_obj
 
     dt = datetime.datetime.strptime(v['value'], '%Y-%m-%dT%H:%M:%S.%f')
     if v['utcoffset'] is not None and v['tzname'] is not None:

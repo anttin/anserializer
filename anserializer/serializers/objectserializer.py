@@ -1,29 +1,14 @@
-import re
+from .baseserializer import BaseSerializer
 
-class ObjectSerializer(object):
-  def __init__(self, obj_types, id_regex = '^!Class\((([a-zA-Z_][0-9a-zA-Z_]*)\.([a-zA-Z_][0-9a-zA-Z_]*))?\)$'):
-    if isinstance(obj_types, list):
-      self._obj_types = obj_types
-    else:
-      self._obj_types = [ obj_types ]
+class ObjectSerializer(BaseSerializer):
+  def __init__(self, obj_types, class_identifiers_in_params=False):
+    super().__init__(obj_types, '^!Class\((([a-zA-Z_][0-9a-zA-Z_]*)\.([a-zA-Z_][0-9a-zA-Z_]*))?\)$')
 
-    self.id_regex = id_regex
+    self.class_identifiers_in_params = class_identifiers_in_params
 
 
-  def get_obj_type_dict(self):
-    types = {}
-    for _type  in self._obj_types:
-      types[_type] = self
-    return types
-
-
-  def get_id_regex_dict(self):
-    return { self.id_regex: self }
-
-
-  # override this for custom operation
-  def serialize(self, obj, class_identifiers_in_params=False):
-    if class_identifiers_in_params:
+  def serialize(self, obj):
+    if self.class_identifiers_in_params is True:
       result = { 
         '!Class()': {
           '__module__': obj.__module__, 
@@ -37,18 +22,18 @@ class ObjectSerializer(object):
     return result
 
 
-  # override this for custom operation
-  def deserialize(self, obj):
+  def deserialize(self, serialized_obj):
     # structure should be like this: { '!Object(Module.Class)': { ... params ... } } so only one item in the dict
     try:
-      k, v = list(obj.items())[0]
+      k, v = list(serialized_obj.items())[0]
     except:
       return obj
     
+    import re
     r = re.match(self.id_regex, k)
 
     if not r:
-      return obj
+      return serialized_obj
 
     if r.groups()[0] is None and '__class__' in v and '__module__' in v:
       module_name = v.pop("__module__")
@@ -59,7 +44,6 @@ class ObjectSerializer(object):
       
     module = __import__(module_name)
     cls    = getattr(module, class_name)
-    _obj   = cls(**v)
+    obj    = cls(**v)
 
-    return _obj
-
+    return obj
