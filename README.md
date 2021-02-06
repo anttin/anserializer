@@ -113,5 +113,3 @@ print(o)
 x = s.get_serialized(o)
 print(x)
 ```
-
-Serializer([ serializer.DatetimeSerializer(), serializer.ObjectSerializer(object), serializer.MySerializer(MyClass) ])
