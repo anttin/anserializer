@@ -1,12 +1,12 @@
 import copy
 import json
 import re
-from anserializer.serializers.datetimeserializer import DatetimeSerializer
-from anserializer.serializers.objectserializer import ObjectSerializer
+from .serializers.datetimeserializer import DatetimeSerializer
+from .serializers.objectserializer import ObjectSerializer
 
 
 class Serializer(object):
-  def __init__(self, serializers=[]):
+  def __init__(self, serializers=[], serialize_children=False):
     if len(serializers) == 0:
       self.serializers = [ 
         DatetimeSerializer(),
@@ -15,9 +15,12 @@ class Serializer(object):
     else:
       self.serializers = serializers
 
+    self.serialize_children = serialize_children
 
-  def get_serialized(self, obj, **json_dumps_params):
-    return self.serialize(obj, self.serializers, **json_dumps_params)
+
+  def get_serialized(self, obj, serialize_children=None, **json_dumps_params):
+    _serialize_children = serialise_children if serialize_children is not None else self.serialize_children
+    return self.serialize(obj, self.serializers, serialize_children=_serialize_children, **json_dumps_params)
 
 
   def get_deserialized(self, j):
@@ -25,7 +28,59 @@ class Serializer(object):
 
 
   @classmethod
-  def _prepare_obj_for_serialization(cls, o, serializers={}):
+  def _get_ancestors(cls, _cls, level=1):
+    result = []
+    for c in _cls.__bases__:
+      result.append((c, level))
+      r = cls._get_ancestors(c, level+1)
+      if isinstance(r, (list, tuple)):
+        for x in r:
+          if x not in result:
+            result.append(x)
+      else:
+        if r not in result:
+          result.append(r)
+
+    return result
+
+
+  @classmethod
+  def _get_ancestors_ordered(cls, _cls):
+    # get list of ancestors with their decendancy level
+    r = cls._get_ancestors(_cls)
+
+    # get dict with decendancy levels per class
+    d = {}
+    for c, l in r:
+      if c in d.keys():
+        d[c].append(l)
+      else:
+        d[c] = [ l ]
+
+    # get dict of classes with more than one decendancy level
+    d2 = {}
+    for k, v in d.items():
+      if len(v) > 1:
+        d2[k] = d[k]
+
+    # filter out the list items that are closest to the child (cls)
+    for k, v in d2.items():
+      keep = max(v)
+      for l in v:
+        if l is keep:
+          continue
+        else:
+          r.remove((k, l))
+
+    # get a sorted list (youngest first)
+    ls = sorted(r, key = lambda x: x[1])
+
+    # return the list of the classes in order
+    return [ x[0] for x in ls ]
+
+
+  @classmethod
+  def _prepare_obj_for_serialization(cls, o, serializers={}, serialize_children=False):
 
     if isinstance(o, (int, float, complex, str, bool)):
       return o
@@ -33,7 +88,7 @@ class Serializer(object):
     elif isinstance(o, (tuple, list, set)):
       _o = []
       for item in o:
-        _o.append(cls._prepare_obj_for_serialization(item, serializers))
+        _o.append(cls._prepare_obj_for_serialization(item, serializers, serialize_children))
 
       if isinstance(o, tuple):
         return tuple(_o)
@@ -45,31 +100,42 @@ class Serializer(object):
     elif isinstance(o, dict):
       _o = {}
       for k, v in o.items():
-        _o[k] = cls._prepare_obj_for_serialization(v, serializers)
+        _o[k] = cls._prepare_obj_for_serialization(v, serializers, serialize_children)
       return _o
 
     else:
-    
-      if type(o) in serializers.keys():
-        _o = serializers[type(o)].serialize(o)
+      # find the serializer class we wil use
+      ser_class = type(o) if type(o) in serializers.keys() else None
+
+      # if no direct match, check if ancestors have serializers (if it is allowed)
+      if ser_class is None and serialize_children is True and o is not None:
+        ancestors = cls._get_ancestors_ordered(type(o))
+        for c in ancestors:
+          if c in serializers.keys():
+            ser_class = c
+            break
+
+      # go on with the serialization if we have a serializer class 
+      if ser_class is not None:
+        _o = serializers[ser_class].serialize(o)
         if isinstance(_o, (tuple, list, set)):
           a = []
           for v in _o:
-            a.append(cls._prepare_obj_for_serialization(v, serializers))
+            a.append(cls._prepare_obj_for_serialization(v, serializers, serialize_children))
           return a
         elif isinstance(_o, dict):
           d = {}
           for k, v in _o.items():
-            d[k] = cls._prepare_obj_for_serialization(v, serializers)
+            d[k] = cls._prepare_obj_for_serialization(v, serializers, serialize_children)
           return d
  
       return o
 
 
   @classmethod
-  def serialize(cls, obj, serializers, **json_dumps_params):
+  def serialize(cls, obj, serializers, serialize_children=False, **json_dumps_params):
     _serializers = cls._get_serializer_dict(serializers)
-    _obj = cls._prepare_obj_for_serialization(obj, _serializers)
+    _obj = cls._prepare_obj_for_serialization(obj, _serializers, serialize_children)
 
     default_json_dumps_params = { 
       'indent':     2,
