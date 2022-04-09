@@ -3,8 +3,8 @@ from .baseserializer import BaseSerializer
 
 class ObjectSerializer(BaseSerializer):
     def __init__(self, obj_types, class_identifiers_in_params=False):
-        super().__init__(
-            obj_types, '^!Class\((([a-zA-Z_][0-9a-zA-Z_]*)\.([a-zA-Z_][0-9a-zA-Z_]*))?\)$')
+        super().__init__(obj_types,
+                         '^!Class\((([a-zA-Z_][0-9a-zA-Z_]*\.)*([a-zA-Z_][0-9a-zA-Z_]*)\.([a-zA-Z_][0-9a-zA-Z_]*))?\)$')
 
         self.class_identifiers_in_params = class_identifiers_in_params
 
@@ -39,9 +39,11 @@ class ObjectSerializer(BaseSerializer):
         if r.groups()[0] is None and '__class__' in v and '__module__' in v:
             module_name = v.pop("__module__")
             class_name = v.pop("__class__")
-        elif r.groups()[0] is not None and r.groups()[1] is not None and r.groups()[2] is not None:
-            module_name = r.groups()[1]
-            class_name = r.groups()[2]
+        elif r.groups()[0] is not None:
+            module_name, class_name = (
+                '.'.join(r.groups()[0].split('.')[:-1]),
+                r.groups()[0].split('.')[-1]
+            )
 
         module = __import__(module_name)
         cls = getattr(module, class_name)
