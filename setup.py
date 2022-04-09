@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="anserializer",
-    version="1.2.1",
+    version="1.2.2",
     author="anttin",
     author_email="muut.py@antion.fi",
     description="A serializer/deserializer mechanism for simple and complex data structures",
