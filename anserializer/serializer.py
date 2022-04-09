@@ -18,7 +18,7 @@ class Serializer(object):
         self.serialize_children = serialize_children
 
     def get_serialized(self, obj, serialize_children=None, **json_dumps_params):
-        _serialize_children = serialise_children if serialize_children is not None else self.serialize_children
+        _serialize_children = serialize_children if serialize_children is not None else self.serialize_children
         return self.serialize(obj, self.serializers, serialize_children=_serialize_children, **json_dumps_params)
 
     def get_deserialized(self, j):
